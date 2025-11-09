@@ -1,0 +1,42 @@
+Cerberus Residential Opportunities Data Science Role
+
+Project Description:
+As a large Single Family Rental (SFR) operator in the US with properties across the country, one of our most
+important objectives is to determine the "Market Rent" estimate for a given property. An accurate "Market Rent"
+estimate allows us to rent out properties quickly and fairly and informs the rent at which we send out renewal
+offers. However, discrepancies between markets, neighborhoods, and properties make this a non-trivial problem.
+
+Your task is to create an algorithm in Python that can calculate a "Market Rent" estimate for a property given 
+its location and some common property attributes. Your model will be trained on the rent level at which nearby 
+properties were rented out over the past two years. A test set is provided, but your model should be able to 
+provide rent estimates for properties outside of the test set as well. Be thoughtful about your approach and be
+organized in your train of thought. There is no right answer, we just want to see how you think. 
+
+The data that is provided represent dummy, not actual, transactions and properties. However, the distribution of 
+properties should mirror the actual density of our largest SFR markets.
+
+
+Data:
+TrainingSet.csv and TestSet.csv both contain the following columns -
+Latitude
+Longitude
+Bedrooms
+Bathrooms
+Square Feet
+Year Built
+
+TrainingSet.csv also contains the following columns -
+Close Date
+Close Price
+
+
+Deliverable:
+Create a function that, given a Pandas Dataframe with Latitude, Longitude, Bedrooms, Bathrooms, Square Feet, and 
+Year Built, will create a calculated Market Rent column. Please submit in a .ipynb or .py file.
+
+Please include comments as you go and think of ways that you could augment the model. Are there other property
+attributes that you think are important? Are there other approaches that you would like to explore given more time?
+We want to see everything that you find in the data and support your conclusions with evidence. 
+
+Time Limit:
+48 Hours

@@ -1,0 +1,29 @@
+
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+RentEstimateProject.code-workspace
+
+# Data & models (keep small samples only)
+**/data/raw/*
+**/data/external/*
+**/models/*
+!**/.gitkeep
+
+# Outputs
+**/outputs/*
+!**/.gitkeep
+
+# Large archives
+*.zip
+*.tar.gz
+
+# Project-specific large datasets (keep local only)
+data/NTAD_National_Transit_Map_Stops.csv
