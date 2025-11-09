@@ -1,0 +1,15 @@
+{
+  "editor.inlineSuggest.enabled": true,
+  "editor.suggest.showInlineDetails": true,
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": true,
+    "strings": true
+  },
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.indexing": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "python.languageServer": "Pylance",
+  "notebook.output.textLineLimit": 5000,
+  "github.copilot.nextEditSuggestions.enabled": true
+}
