@@ -6,6 +6,14 @@ from src import preprocessing
 
 
 def predict_market_rent(df):
+    """
+    Predict market rent for the given DataFrame using the best trained model. 
+    Exports results to a timestamped CSV file.
+    Args:
+        df (pd.DataFrame): Input DataFrame with property data.
+    Returns:
+        pd.DataFrame: DataFrame with original data and a new column 'calculated Market Rent'
+    """
     # Preprocess test data (same function used for training)
     output_df = df.copy()
     processed_test_df = preprocessing.preprocess_data(df)

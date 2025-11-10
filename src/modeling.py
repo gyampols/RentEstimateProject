@@ -11,7 +11,13 @@ from tqdm import tqdm
 import os
 
 class Modeler():
+    '''
+    A class for training and evaluating multiple regression models on a given dataset.
+    '''
     def __init__(self,df,target_col='Close Price'):
+        '''
+        Initializes the Modeler with the dataset and target column.
+        '''
         self.df=df
         self.X=self.df.drop(columns=[target_col])
         self.y=self.df[target_col]
@@ -48,11 +54,19 @@ class Modeler():
         self.trained_models = {}
 
     def train_test_split(self, test_size=0.2, random_state=42):
+        '''
+        Splits the dataset into training and testing sets, and stores them as instance variables.
+        '''
         from sklearn.model_selection import train_test_split
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             self.X, self.y, test_size=test_size, random_state=random_state) 
 
     def model_evals(self, models):
+        '''
+        Trains and evaluates each model in the provided dictionary of models.
+        Uses GridSearchCV for hyperparameter tuning and evaluates performance on both training and test sets.
+        Stores results in a DataFrame and identifies the best model based on Test R2.
+        '''
         self.trained_models = {}
         for name, model_info in tqdm(models.items()):
             print(f"Training {name}...")
@@ -97,6 +111,9 @@ class Modeler():
         self.results_df.sort_values(by='Test_MSE', inplace=True)
         return self.results_df
     def save_models(self, directory='models/'):
+        '''
+        Saves all trained models and results to the specified directory using joblib.
+        '''
         import os
         if not os.path.exists(directory):
                 os.makedirs(directory)
@@ -108,6 +125,8 @@ class Modeler():
         print(f"Model results saved to {directory}model_results.csv")
 
     def train_final_model(self):
+        '''
+        Trains the best model on the entire dataset and saves it.'''
         # Train best model on entire dataset and save predictions
         if self.best_model is None:
             print("No best model found. Run model_evals() first.")

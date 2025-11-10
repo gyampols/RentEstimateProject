@@ -29,6 +29,10 @@ def preprocess_data(df):
 
 
 def add_state_codes(df):
+    """
+    Add a 'State' column with the two-letter state code derived from Latitude/Longitude.
+    Uses a spatial join with US states to determine the state for each property.
+    """
     # Create a GeoDataFrame for the properties
     geometry = [Point(xy) for xy in zip(df['Longitude'], df['Latitude'])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:4326')
@@ -53,6 +57,7 @@ def add_state_codes(df):
 def merge_zillow_data_by_zip(df):
     """Attach ZIP-level ZHI computed as the mean of 2023–2024 Zillow indices.
     Ensures df['Zipcode'] exists (derived from coordinates via ZCTA overlay).
+    Zillow data comes from https://www.zillow.com/research/data/ and is pre-downloaded in the data directory.
     """
     # Ensure df has a Zipcode column; derive from ZCTA if missing
     coord_mask = df[['Latitude', 'Longitude']].notna().all(axis=1)
@@ -108,6 +113,7 @@ def merge_zillow_data_by_zip(df):
 def merge_zillow_data_by_state(df):
     """Attach State-level ZHI for 2023–2024 and finalize ZHI with ZIP fallback.
     Creates final 'ZHI' column: prefer ZHI_Zip where available else ZHI_State.
+    Zillow data comes from https://www.zillow.com/research/data/ and is pre-downloaded in the data directory.
     """
     # Load Zillow state-level data and compute 2023–2024 average per state
     zillow_state_path = os.path.join(DATA_DIR, 'State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
@@ -138,6 +144,11 @@ def merge_zillow_data_by_state(df):
 
 
 def calc_distance_to_transit(df):
+    """
+    Calculate distance to nearest transit stop using haversine distance.
+    Uses a BallTree for efficient nearest neighbor search.
+    Transit data comes from https://www.transit.dot.gov/ntad and is pre-downloaded in the data directory.
+    """
     transit_cols = ['OBJECTID','stop_lat','stop_lon']
     transit_path = os.path.join(DATA_DIR, 'NTAD_National_Transit_Map_Stops.csv')
     sample_transit_path = os.path.join(DATA_DIR, 'samples', 'NTAD_National_Transit_Map_Stops_sample.csv')

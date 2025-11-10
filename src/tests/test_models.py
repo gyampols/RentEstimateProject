@@ -1,3 +1,11 @@
+"""
+Unit tests for the Modeler class and model evaluation process.
+Tests include:
+- Modeler class initialization and data splitting
+- Model training and evaluation
+- Best model selection based on R2 score
+"""
+
 import unittest 
 import pandas as pd
 
@@ -84,7 +92,13 @@ models = {
 
 
 class TestModelEvaluation(unittest.TestCase):
+    """
+    Unit tests for the Modeler class and model evaluation process.
+    """
     def setUp(self):
+        """
+        Set up the test environment by loading the dataset, preprocessing it, and initializing the Modeler.
+        """
         # Use the provided training dataset for testing
         training_csv = os.path.join(data_folder, "TrainingSet.csv")
         if not os.path.exists(training_csv):
@@ -97,13 +111,17 @@ class TestModelEvaluation(unittest.TestCase):
         self.modeler.train_test_split(0.3)
         self.results = self.modeler.model_evals(models=models)
     def test_modeler_class(self):
+        """Test that the Modeler class initializes correctly and splits data."""
         #make sure x train isnt empty
         self.assertFalse(self.modeler.X_train.empty)
         self.assertFalse(self.modeler.y_train.empty)
     def test_modeler_training(self):
+        """Test that the model evaluation process runs and produces results."""
         #make sure trained models are not empty
         self.assertFalse(self.results.empty)
     def test_modeler_best_model_threshold(self):
+        """Test that the best model's R2 score is above a certain threshold."""
         #make sure test R2 of top model is above 0.7
+        threshold = 0.7
         top_model = self.results.loc[self.results['TestR2'].idxmax()]
-        self.assertGreater(top_model['TestR2'], 0.7)
+        self.assertGreater(top_model['TestR2'], threshold)
