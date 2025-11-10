@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from shapely.geometry import Point
 import geopandas as gpd
@@ -5,6 +6,10 @@ import re
 import numpy as np
 from sklearn.neighbors import BallTree
 from src import parameter_store as ps
+
+# Resolve project root relative to this file so data paths work in CI and locally
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 
 
 def preprocess_data(df):
@@ -71,7 +76,8 @@ def merge_zillow_data_by_zip(df):
     df['Zipcode'] = df.get('Zipcode', pd.Series([None]*len(df))).astype(str).str.zfill(5)
 
     # Load Zillow ZIP-level data and compute 2023–2024 average per ZIP
-    zillow_data_zip = pd.read_csv('./data/Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_zip_path = os.path.join(DATA_DIR, 'Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_data_zip = pd.read_csv(zillow_zip_path)
     month_cols = [c for c in zillow_data_zip.columns if re.fullmatch(r"\d{4}-\d{2}-\d{2}", c)]
     zillow_long = (
         zillow_data_zip
@@ -103,7 +109,8 @@ def merge_zillow_data_by_state(df):
     Creates final 'ZHI' column: prefer ZHI_Zip where available else ZHI_State.
     """
     # Load Zillow state-level data and compute 2023–2024 average per state
-    zillow_data_state = pd.read_csv('./data/State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_state_path = os.path.join(DATA_DIR, 'State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_data_state = pd.read_csv(zillow_state_path)
     month_cols = [c for c in zillow_data_state.columns if re.fullmatch(r"\d{4}-\d{2}-\d{2}", c)]
     zillow_long_state = (
         zillow_data_state
@@ -131,8 +138,9 @@ def merge_zillow_data_by_state(df):
 
 def calc_distance_to_transit(df):
     transit_cols = ['OBJECTID','stop_lat','stop_lon']
+    transit_path = os.path.join(DATA_DIR, 'NTAD_National_Transit_Map_Stops.csv')
     transit_data = (
-        pd.read_csv('./data/NTAD_National_Transit_Map_Stops.csv', usecols=transit_cols)
+        pd.read_csv(transit_path, usecols=transit_cols)
         .dropna(subset=['stop_lat','stop_lon'])
     )
 
