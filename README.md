@@ -23,7 +23,7 @@ Hi and welcome to my GitHub repository for the Rent Estimate case study! The goa
 │   ├── NTAD_National_Transit_Map_Stops.csv
 │   └── State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
 │   └── TestSet.csv
-│   └── TrainSet.csv
+│   └── TrainingSet.csv
 │   └── Zip_zhvi_brmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
 ├── docs
 │   ├── DataScienceProject.txt
