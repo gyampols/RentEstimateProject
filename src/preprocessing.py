@@ -1,25 +1,24 @@
 import pandas as pd
 from shapely.geometry import Point
 import geopandas as gpd
-import pandas as pd  
 import re
 import numpy as np
 from sklearn.neighbors import BallTree
-import parameter_store
+from src import parameter_store as ps
 
-meta_cols = {"RegionID","SizeRank","RegionName","RegionType","StateName","State","City","Metro","CountyName"}
 
 def preprocess_data(df):
-    # close date should be converted to datetime
-    df['Close Date'] = pd.to_datetime(df['Close Date'])
-    # lets add a column for month of close date
-    df['Close Month'] = df['Close Date'].dt.month
-    df['Close Month End'] = df['Close Date'] + pd.offsets.MonthEnd(0)
-    df=add_state_codes(df)
-    df, month_cols=merge_zillow_data_by_zip(df)
-    df=merge_zillow_data_by_state(df, month_cols)
-    df.drop(columns=['Zipcode','State'], inplace=True)
-    df=calc_distance_to_transit(df)
+    """
+    End-to-end preprocessing without using Close Date. Computes ZHI as the
+    average Zillow index over months in 2023 and 2024, preferring ZIP-level
+    averages and falling back to state-level averages when ZIP is unavailable.
+    """
+    df = add_state_codes(df)
+    df = merge_zillow_data_by_zip(df)
+    df = merge_zillow_data_by_state(df)
+    # Cleanup helper columns
+    df.drop(columns=['Zipcode', 'State'], inplace=True, errors='ignore')
+    df = calc_distance_to_transit(df)
     return df
 
 
@@ -28,9 +27,11 @@ def add_state_codes(df):
     geometry = [Point(xy) for xy in zip(df['Longitude'], df['Latitude'])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:4326')
     # Load US states
-    states = gpd.read_file('https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_state_20m.zip')
+    states = gpd.read_file(ps.state_codes_crs_url)
     # Ensure both GeoDataFrames use the same CRS
-    gdf = gdf.to_crs(states.crs)
+    # Guard against missing CRS on states (rare but defensively handle)
+    if states.crs is not None:
+        gdf = gdf.to_crs(states.crs)
     # Perform spatial join to get state information for each property
     gdf_with_state = gpd.sjoin(gdf, states[['STUSPS', 'geometry']], how='left')
     # Rename the state code column
@@ -44,11 +45,10 @@ def add_state_codes(df):
 
 
 def merge_zillow_data_by_zip(df):
-    # Load Zillow ZIP-level data
-    
-    # Zillow ZIP-level dataset (one-bedroom) wide -> long + month-end merge
-    zillow_data_zip = pd.read_csv('Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
-    # 1) Ensure df has a Zipcode column; derive from ZCTA if missing
+    """Attach ZIP-level ZHI computed as the mean of 2023–2024 Zillow indices.
+    Ensures df['Zipcode'] exists (derived from coordinates via ZCTA overlay).
+    """
+    # Ensure df has a Zipcode column; derive from ZCTA if missing
     coord_mask = df[['Latitude', 'Longitude']].notna().all(axis=1)
 
     gdf_pts = gpd.GeoDataFrame(
@@ -56,10 +56,10 @@ def merge_zillow_data_by_zip(df):
         geometry=[Point(xy) for xy in zip(df.loc[coord_mask, 'Longitude'], df.loc[coord_mask, 'Latitude'])],
         crs='EPSG:4326'
     )
-    # Use the 500k generalized ZCTA shapefile (20m version 404s in this environment)
-    zcta_url = 'https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_zcta520_500k.zip'
-    zcta = gpd.read_file(zcta_url)
-    zcta = zcta.to_crs(gdf_pts.crs)
+    # Use the 500k generalized ZCTA shapefile
+    zcta = gpd.read_file(ps.zip_codes_crs_url)
+    if gdf_pts.crs is not None and zcta.crs is not None:
+        zcta = zcta.to_crs(gdf_pts.crs)
     cand_cols = ['ZCTA5CE20', 'ZCTA5CE10', 'GEOID', 'ZCTA5']
     zcta_col = next((c for c in cand_cols if c in zcta.columns), None)
     if zcta_col is None:
@@ -70,92 +70,69 @@ def merge_zillow_data_by_zip(df):
     # Normalize Zip format if present
     df['Zipcode'] = df.get('Zipcode', pd.Series([None]*len(df))).astype(str).str.zfill(5)
 
-    # 2) Zillow file is wide -> melt to long
+    # Load Zillow ZIP-level data and compute 2023–2024 average per ZIP
+    zillow_data_zip = pd.read_csv('./data/Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
     month_cols = [c for c in zillow_data_zip.columns if re.fullmatch(r"\d{4}-\d{2}-\d{2}", c)]
-
     zillow_long = (
         zillow_data_zip
-        .melt(id_vars=sorted(meta_cols & set(zillow_data_zip.columns)), value_vars=month_cols,
-                var_name="Date", value_name="ZillowValue")
+        .melt(id_vars=sorted(ps.meta_cols & set(zillow_data_zip.columns)), value_vars=month_cols,
+              var_name="Date", value_name="ZillowValue")
     )
     zillow_long['Date'] = pd.to_datetime(zillow_long['Date'])
-
     # Derive Zipcode from RegionName where RegionType == 'zip' and zero-pad
     if 'RegionType' in zillow_long.columns and 'RegionName' in zillow_long.columns:
         zip_mask = zillow_long['RegionType'].str.lower() == 'zip'
         zillow_long.loc[zip_mask, 'Zipcode'] = zillow_long.loc[zip_mask, 'RegionName'].astype(str).str.zfill(5)
     else:
         raise ValueError("Missing RegionType/RegionName for ZIP derivation.")
-
     zillow_long = zillow_long.dropna(subset=['Zipcode'])
-    # 4) Merge only if Zipcode appears to have non-null values
-    if df['Zipcode'].notna().any():
-        merged_df = pd.merge(
-            df,
-            zillow_long[['Zipcode','Date','ZillowValue']],
-            left_on=['Zipcode','Close Month End'],
-            right_on=['Zipcode','Date'],
-            how='left'
-        ).drop(columns=['Date'])
-        match_rate = merged_df['ZillowValue'].notna().mean()
-        print(f"Zillow match rate: {match_rate:.1%} ({merged_df['ZillowValue'].notna().sum()} / {len(merged_df)})")
-    else:
-        print("No valid Zipcode values found; skipping Zillow merge.")
-        merged_df = df.copy()
-        merged_df['ZillowValue'] = pd.NA
 
-    return merged_df, month_cols
+    # Filter to 2023 and 2024 inclusive
+    yr_mask = (zillow_long['Date'].dt.year >= 2023) & (zillow_long['Date'].dt.year <= 2024)
+    zhi_zip = zillow_long.loc[yr_mask].groupby('Zipcode', as_index=False)['ZillowValue'].mean()
+    # Rename without using rename() to satisfy strict type checks
+    zhi_zip.columns = ['Zipcode', 'ZHI_Zip']
+
+    # Merge ZHI_Zip to df
+    df = df.merge(zhi_zip, on='Zipcode', how='left')
+    return df
 
 
-def merge_zillow_data_by_state(df, month_cols):
-    
-    # Zillow state-level dataset (one-bedroom) wide -> long + month-end merge
-    zillow_data_state = pd.read_csv('State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
-    #we now pull in the zillow data by state and fill the missing zillow values according to state averages in a similar wayabs
+def merge_zillow_data_by_state(df):
+    """Attach State-level ZHI for 2023–2024 and finalize ZHI with ZIP fallback.
+    Creates final 'ZHI' column: prefer ZHI_Zip where available else ZHI_State.
+    """
+    # Load Zillow state-level data and compute 2023–2024 average per state
+    zillow_data_state = pd.read_csv('./data/State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    month_cols = [c for c in zillow_data_state.columns if re.fullmatch(r"\d{4}-\d{2}-\d{2}", c)]
     zillow_long_state = (
         zillow_data_state
-        .melt(id_vars=sorted(meta_cols & set(zillow_data_state.columns)), value_vars=month_cols,
-                var_name="Date", value_name="ZillowValue")
+        .melt(id_vars=sorted(ps.meta_cols & set(zillow_data_state.columns)), value_vars=month_cols,
+              var_name="Date", value_name="ZillowValue")
     )
     zillow_long_state['Date'] = pd.to_datetime(zillow_long_state['Date'])
-    # Match RegionName which has the state name spelled out to its corresponding 2 letter state code. Ex: "California" -> "CA"
-    state_name_to_code = {
-        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': '   AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO',
-        'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
-        'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
-        'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
-        'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH',
-        'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND',
-        'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',         
-        'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
-        'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
-    }
-    zillow_long_state['State'] = zillow_long_state['RegionName'].map(state_name_to_code)
+    # Map state full name to two-letter code
+    zillow_long_state['State'] = zillow_long_state['RegionName'].map(ps.state_name_to_code)
     zillow_long_state = zillow_long_state.dropna(subset=['State'])
-    # Merge on State and month-end Close Date
-    merged_df_state = pd.merge(
-        df,
-        zillow_long_state[['State','Date','ZillowValue']],
-        left_on=['State','Close Month End'],
-        right_on=['State','Date'],
-        how='left',
-        suffixes=('', '_State')
-    ).drop(columns=['Date'])
-    # Fill missing ZIP-level Zillow values with state-level averages
-    merged_df_state['ZillowValue_Filled'] = merged_df_state['ZillowValue']
-    missing_zip_mask = merged_df_state['ZillowValue'].isna() & merged_df_state['ZillowValue_State'].notna()
-    merged_df_state.loc[missing_zip_mask, 'ZillowValue_Filled'] = merged_df_state.loc[missing_zip_mask, 'ZillowValue_State']
-    # then drop close month end, zillow value state and zillow value
-    final_df = merged_df_state.drop(columns=['Close Month End', 'ZillowValue_State', 'ZillowValue'])
-    # rename the filled column to ZHI   
-    final_df.rename(columns={'ZillowValue_Filled': 'ZHI'}, inplace=True)
-    return final_df
+
+    yr_mask = (zillow_long_state['Date'].dt.year >= 2023) & (zillow_long_state['Date'].dt.year <= 2024)
+    zhi_state = zillow_long_state.loc[yr_mask].groupby('State', as_index=False)['ZillowValue'].mean()
+    zhi_state.columns = ['State', 'ZHI_State']
+
+    df = df.merge(zhi_state, on='State', how='left')
+    # Final ZHI selection: prefer ZIP, fallback to State
+    df['ZHI'] = df['ZHI_Zip']
+    use_state = df['ZHI'].isna() & df['ZHI_State'].notna()
+    df.loc[use_state, 'ZHI'] = df.loc[use_state, 'ZHI_State']
+    # Drop helper columns
+    df.drop(columns=['ZHI_Zip', 'ZHI_State'], inplace=True, errors='ignore')
+    return df
 
 
 def calc_distance_to_transit(df):
     transit_cols = ['OBJECTID','stop_lat','stop_lon']
     transit_data = (
-        pd.read_csv('NTAD_National_Transit_Map_Stops.csv', usecols=transit_cols)
+        pd.read_csv('./data/NTAD_National_Transit_Map_Stops.csv', usecols=transit_cols)
         .dropna(subset=['stop_lat','stop_lon'])
     )
 
