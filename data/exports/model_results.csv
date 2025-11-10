@@ -1,0 +1,6 @@
+Model Name,Best Parameters,Training_Latency,Train_MSE,Test_MSE,TrainR2,TestR2
+XGBoost,"{'model__gamma': 0, 'model__max_depth': 6, 'model__min_child_weight': 3, 'model__objective': 'reg:squarederror', 'model__reg_alpha': 0.01, 'model__reg_lambda': 1}",1.550549030303955,140573.76749896136,177879.27075320206,0.7891305466117174,0.7332761840865022
+HistGradientBoostingRegressor,"{'model__max_depth': None, 'model__min_samples_leaf': 10}",0.9757781028747559,176779.6930908755,193178.09153458476,0.7348193911606112,0.7103361313163923
+ANN,"{'model__activation': 'relu', 'model__alpha': 0.001, 'model__batch_size': 128, 'model__hidden_layer_sizes': (64, 32), 'model__learning_rate_init': 0.001}",25.17567205429077,225857.3570817794,232120.67557113423,0.6611998221367379,0.6519430730821261
+decision_tree,"{'model__max_depth': 10, 'model__min_samples_split': 10}",1.0831711292266846,200387.23559519058,246487.63099447085,0.6994065991988225,0.6304003201950392
+LinearRegression,{},0.3089599609375,386844.30754801346,381285.0045393161,0.41970931610962936,0.42827631949075196
