@@ -1,7 +1,9 @@
 # Pinned versions tested on macOS arm64 with Python 3.12
 
 # Core scientific stack
-numpy==2.0.2
+# NOTE: numpy pinned to 1.26.4 because shap 0.42.1 wheels/extensions are not yet
+# compatible with NumPy 2.x on macOS arm64; upgrade when shap releases NumPy 2 support.
+numpy==1.26.4
 pandas==2.2.3
 scipy==1.14.1
 
