@@ -25,3 +25,10 @@ models/model_results.csv
 # Large archives
 *.zip
 *.tar.gz
+
+# Large raw datasets (use Git LFS or samples instead)
+data/NTAD_National_Transit_Map_Stops.csv
+data/**/NTAD_National_Transit_Map_Stops.csv
+
+# Allow small sample datasets to be committed
+!data/samples/NTAD_National_Transit_Map_Stops_sample.csv

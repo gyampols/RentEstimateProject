@@ -1,4 +1,5 @@
 import os
+import warnings
 import pandas as pd
 from shapely.geometry import Point
 import geopandas as gpd
@@ -139,6 +140,16 @@ def merge_zillow_data_by_state(df):
 def calc_distance_to_transit(df):
     transit_cols = ['OBJECTID','stop_lat','stop_lon']
     transit_path = os.path.join(DATA_DIR, 'NTAD_National_Transit_Map_Stops.csv')
+    sample_transit_path = os.path.join(DATA_DIR, 'samples', 'NTAD_National_Transit_Map_Stops_sample.csv')
+    # Fallback: if full dataset missing use sample; if both missing assign zeros.
+    if not os.path.exists(transit_path):
+        if os.path.exists(sample_transit_path):
+            warnings.warn(f"Full transit file missing; using sample at {sample_transit_path}.")
+            transit_path = sample_transit_path
+        else:
+            warnings.warn(f"Transit file not found. Using zeros for DistanceToTransit.")
+            df['DistanceToTransit'] = 0.0
+            return df
     transit_data = (
         pd.read_csv(transit_path, usecols=transit_cols)
         .dropna(subset=['stop_lat','stop_lon'])
