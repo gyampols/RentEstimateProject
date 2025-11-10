@@ -15,8 +15,6 @@ models/*.joblib
 models/model_results.csv
 
 # Data & models (keep small samples only)
-**/data/raw/*
-**/data/external/*
 **/models/*
 !**/.gitkeep
 
@@ -27,6 +25,3 @@ models/model_results.csv
 # Large archives
 *.zip
 *.tar.gz
-
-# Project-specific large datasets (keep local only)
-data/NTAD_National_Transit_Map_Stops.csv
