@@ -5,9 +5,8 @@ import pandas as pd
 import re
 import numpy as np
 from sklearn.neighbors import BallTree
-import parameter_store
+from src import parameter_store as ps
 
-meta_cols = {"RegionID","SizeRank","RegionName","RegionType","StateName","State","City","Metro","CountyName"}
 
 def preprocess_data(df):
     # close date should be converted to datetime
@@ -15,10 +14,15 @@ def preprocess_data(df):
     # lets add a column for month of close date
     df['Close Month'] = df['Close Date'].dt.month
     df['Close Month End'] = df['Close Date'] + pd.offsets.MonthEnd(0)
+    df['Close Year'] = df['Close Date'].dt.year
+    # add column for age of house
+    df['House Age'] = df['Close Date'].dt.year - df['Year Built']
+    # add column for age of house at time of sale
+    df['Age at Sale'] = df['Close Date'].dt.year - df['Year Built']
     df=add_state_codes(df)
     df, month_cols=merge_zillow_data_by_zip(df)
     df=merge_zillow_data_by_state(df, month_cols)
-    df.drop(columns=['Zipcode','State'], inplace=True)
+    df.drop(columns=['Zipcode','State','Year Built'], inplace=True)
     df=calc_distance_to_transit(df)
     return df
 
@@ -28,7 +32,7 @@ def add_state_codes(df):
     geometry = [Point(xy) for xy in zip(df['Longitude'], df['Latitude'])]
     gdf = gpd.GeoDataFrame(df, geometry=geometry, crs='EPSG:4326')
     # Load US states
-    states = gpd.read_file('https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_state_20m.zip')
+    states = gpd.read_file(ps.state_codes_crs_url)
     # Ensure both GeoDataFrames use the same CRS
     gdf = gdf.to_crs(states.crs)
     # Perform spatial join to get state information for each property
@@ -47,7 +51,7 @@ def merge_zillow_data_by_zip(df):
     # Load Zillow ZIP-level data
     
     # Zillow ZIP-level dataset (one-bedroom) wide -> long + month-end merge
-    zillow_data_zip = pd.read_csv('Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_data_zip = pd.read_csv('./data/Zip_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
     # 1) Ensure df has a Zipcode column; derive from ZCTA if missing
     coord_mask = df[['Latitude', 'Longitude']].notna().all(axis=1)
 
@@ -57,8 +61,7 @@ def merge_zillow_data_by_zip(df):
         crs='EPSG:4326'
     )
     # Use the 500k generalized ZCTA shapefile (20m version 404s in this environment)
-    zcta_url = 'https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_zcta520_500k.zip'
-    zcta = gpd.read_file(zcta_url)
+    zcta = gpd.read_file(ps.zip_codes_crs_url)
     zcta = zcta.to_crs(gdf_pts.crs)
     cand_cols = ['ZCTA5CE20', 'ZCTA5CE10', 'GEOID', 'ZCTA5']
     zcta_col = next((c for c in cand_cols if c in zcta.columns), None)
@@ -75,7 +78,7 @@ def merge_zillow_data_by_zip(df):
 
     zillow_long = (
         zillow_data_zip
-        .melt(id_vars=sorted(meta_cols & set(zillow_data_zip.columns)), value_vars=month_cols,
+        .melt(id_vars=sorted(ps.meta_cols & set(zillow_data_zip.columns)), value_vars=month_cols,
                 var_name="Date", value_name="ZillowValue")
     )
     zillow_long['Date'] = pd.to_datetime(zillow_long['Date'])
@@ -110,27 +113,17 @@ def merge_zillow_data_by_zip(df):
 def merge_zillow_data_by_state(df, month_cols):
     
     # Zillow state-level dataset (one-bedroom) wide -> long + month-end merge
-    zillow_data_state = pd.read_csv('State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
+    zillow_data_state = pd.read_csv('./data/State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv')
     #we now pull in the zillow data by state and fill the missing zillow values according to state averages in a similar wayabs
     zillow_long_state = (
         zillow_data_state
-        .melt(id_vars=sorted(meta_cols & set(zillow_data_state.columns)), value_vars=month_cols,
+        .melt(id_vars=sorted(ps.meta_cols & set(zillow_data_state.columns)), value_vars=month_cols,
                 var_name="Date", value_name="ZillowValue")
     )
     zillow_long_state['Date'] = pd.to_datetime(zillow_long_state['Date'])
     # Match RegionName which has the state name spelled out to its corresponding 2 letter state code. Ex: "California" -> "CA"
-    state_name_to_code = {
-        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': '   AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO',
-        'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
-        'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
-        'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
-        'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH',
-        'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND',
-        'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',         
-        'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
-        'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
-    }
-    zillow_long_state['State'] = zillow_long_state['RegionName'].map(state_name_to_code)
+ 
+    zillow_long_state['State'] = zillow_long_state['RegionName'].map(ps.state_name_to_code)
     zillow_long_state = zillow_long_state.dropna(subset=['State'])
     # Merge on State and month-end Close Date
     merged_df_state = pd.merge(
@@ -155,7 +148,7 @@ def merge_zillow_data_by_state(df, month_cols):
 def calc_distance_to_transit(df):
     transit_cols = ['OBJECTID','stop_lat','stop_lon']
     transit_data = (
-        pd.read_csv('NTAD_National_Transit_Map_Stops.csv', usecols=transit_cols)
+        pd.read_csv('./data/NTAD_National_Transit_Map_Stops.csv', usecols=transit_cols)
         .dropna(subset=['stop_lat','stop_lon'])
     )
 
