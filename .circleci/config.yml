@@ -7,10 +7,16 @@ jobs:
     docker:
       - image: cimg/python:3.12.7
 
-    working_directory: ~/repo
+    # Use project root as working directory so relative ./data paths resolve in tests
+    working_directory: ~/project
 
     steps:
       - checkout
+      - run:
+          name: Show tree for debugging
+          command: |
+            pwd
+            ls -1
 
       # Download and cache dependencies
       - restore_cache:
@@ -20,7 +26,7 @@ jobs:
             - v1-dependencies-
 
       - run:
-          name: install dependencies
+          name: Install dependencies
           command: |
             python3 -m venv .venv
             source .venv/bin/activate
@@ -34,7 +40,7 @@ jobs:
             - ./.venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}          
       - run:
-          name: run tests
+          name: Run tests
           command: |
             source .venv/bin/activate
-            pytest
+            pytest -q
