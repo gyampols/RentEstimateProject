@@ -63,15 +63,14 @@ Deliver a function that takes a pandas DataFrame with those columns and returns 
 Explain your thinking — feature choices, modeling approach, and how you would improve it with more data (neighborhood features, seasonality, amenities, etc.).
 
 ## Project Flow
-### Make the path from raw → model explicit
-You mention the notebooks, but the README doesn’t spell out the pipeline. Add a short “Project Flow”:
+### Make the path from raw  
 
 1. `notebooks/EDA.ipynb` – explore and feature engineer
 2. `notebooks/model_evals.ipynb` – compare models
 3. `src/` – productionized version of the modeling logic
 4. `models/` – saved artifacts
 
-That shows you can go from exploration to production-ish code.
+
 ## Quick Start
 
 ```bash
