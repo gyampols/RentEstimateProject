@@ -79,6 +79,12 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+### function to generate predictions on the test set
+```python
+from src.inference import predict_market_rent
+df = pd.read_csv("data/TestSet.csv")
+print(predict_market_rent(df).head())
+```
 ## Results
 
 ### Model comparison

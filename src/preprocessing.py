@@ -17,7 +17,7 @@ def preprocess_data(df):
     df = merge_zillow_data_by_zip(df)
     df = merge_zillow_data_by_state(df)
     # Cleanup helper columns
-    df.drop(columns=['Zipcode', 'State'], inplace=True, errors='ignore')
+    df=df.drop(columns=['Zipcode', 'State'], errors='ignore')
     df = calc_distance_to_transit(df)
     return df
 
