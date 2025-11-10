@@ -19,9 +19,7 @@ class Modeler():
         # Feature names after feature engineering (feature engineering must run first)
         # Apply global numeric pipeline to all but Bedrooms, which will get a dedicated
         # PowerTransformer branch to stabilize its distribution.
-        numerical_features = [
-            'House Age', 'Age at Sale', 'Close Month', 'Latitude', 'Longitude', 'ZHI', 'Close Year'
-        ]
+        numerical_features = ['Latitude', 'Longitude', 'ZHI', 'Year Built']
         skewed_features = ['Bedrooms', 'Square Feet', 'Bathrooms', 'DistanceToTransit']
 
         # Fix: proper Pipeline syntax and add imputation for NaNs in ZHI
