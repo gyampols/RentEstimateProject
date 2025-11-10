@@ -8,8 +8,10 @@ Hi and welcome to my GitHub repository for the Rent Estimate case study! The goa
 
 ## Table of Contents
 - [Folder Structure](#folder-structure)
-- [Project Objective](#Project Objective)
+- [Project Objective](#project-objective)
+- [Project Flow](#project-flow)
 - [Quick Start](#quick-start)  
+
 
 ## folder structure
 ```
@@ -21,7 +23,7 @@ Hi and welcome to my GitHub repository for the Rent Estimate case study! The goa
 │   ├── NTAD_National_Transit_Map_Stops.csv
 │   └── State_zhvi_bdrmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
 │   └── TestSet.csv
-│   └── TrainSet.csv
+│   └── TrainingSet.csv
 │   └── Zip_zhvi_brmcnt_1_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
 ├── docs
 │   ├── DataScienceProject.txt
@@ -44,8 +46,9 @@ Hi and welcome to my GitHub repository for the Rent Estimate case study! The goa
 ``` 
 All notebooks can be found in the **[notebooks folder](./notebooks)**.  It consists of one **[exploratory data analysis workbook](./notebooks/EDA.ipynb)** showing my work on exploring different feature engineerings and **[one model evaluation and fitting notebook](./notebooks/model_evals.ipynb)** where I compared several models, fine tuned hyperparameters and evaluated residuals.
 
-The write up I did is in the docs folder.
-## Project Object
+The write up I did is in the [docs folder](./docs).
+
+## Project Objective
 
 The company wants a Python model that estimates market rent for single-family homes across the U.S. using basic property info and location. They gave two files: one to train on (with past rented prices over the last two years) and one to test on. 
 Train a model on the provided historical data (TrainingSet.csv) using:
@@ -58,10 +61,19 @@ Use that model to predict a “Market Rent” for new properties (like the ones 
 Deliver a function that takes a pandas DataFrame with those columns and returns the same DF with an extra Market Rent column.
 Explain your thinking — feature choices, modeling approach, and how you would improve it with more data (neighborhood features, seasonality, amenities, etc.).
 
+## Project Flow
+### Make the path from raw → model explicit
+You mention the notebooks, but the README doesn’t spell out the pipeline. Add a short “Project Flow”:
+
+1. `notebooks/EDA.ipynb` – explore and feature engineer
+2. `notebooks/model_evals.ipynb` – compare models
+3. `src/` – productionized version of the modeling logic
+4. `models/` – saved artifacts
+
+That shows you can go from exploration to production-ish code.
 ## Quick Start
-```
-bash
+
+```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-'''

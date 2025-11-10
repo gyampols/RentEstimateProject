@@ -10,6 +10,9 @@ env/
 .DS_Store
 Thumbs.db
 RentEstimateProject.code-workspace
+*.pyc
+models/*.joblib
+models/model_results.csv
 
 # Data & models (keep small samples only)
 **/data/raw/*
