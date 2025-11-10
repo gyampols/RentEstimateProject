@@ -25,28 +25,9 @@ ipykernel==6.29.5
 
 # Utility
 tqdm==4.67.1
-# Core scientific stack
-numpy>=1.26
-pandas>=2.2
-scipy>=1.11
 
-# Visualization
-matplotlib>=3.8
-seaborn>=0.13
+# Boosting libraries
+xgboost==2.1.1
+lightgbm==4.5.0
 
-# Geospatial stack
-geopandas>=0.14
-shapely>=2.0
-fiona>=1.9
-pyproj>=3.6
-geodatasets>=2023.12
 
-# ML / Nearest-neighbors
-scikit-learn>=1.4
-
-# Notebook experience (run in VS Code or Jupyter)
-jupyter>=1.0
-ipykernel>=6.29
-
-# Utility
-tqdm>=4.66
