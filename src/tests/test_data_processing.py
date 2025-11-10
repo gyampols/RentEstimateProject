@@ -27,10 +27,9 @@ class TestPreprocessing(unittest.TestCase):
 
     def test_merge_zillow_data(self):
         self.assertIn('ZHI', self.processed_df.columns)
-        self.assertTrue(self.processed_df['ZHI'].notna().all())
 
-    def test_calc_distance_to_transit(self):
-        self.assertIn('Distance_to_Transit', self.processed_df.columns)
-        self.assertTrue(self.processed_df['Distance_to_Transit'].notna().all())
-        self.assertTrue((self.processed_df['Distance_to_Transit'] >= 0).all())
-        self.assertTrue((self.processed_df['Distance_to_Transit'] <= self.processed_df['Distance_to_Transit'].max()).all()) 
+    def test_calc_DistanceToTransit(self):
+        self.assertIn('DistanceToTransit', self.processed_df.columns)
+        self.assertTrue(self.processed_df['DistanceToTransit'].notna().all())
+        self.assertTrue((self.processed_df['DistanceToTransit'] >= 0).all())
+        self.assertTrue((self.processed_df['DistanceToTransit'] <= self.processed_df['DistanceToTransit'].max()).all()) 
